@@ -3,6 +3,7 @@
 require 'getoptlong'
 require 'docker'
 require 'excon'
+require 'logger'
 
 def show_usage()
   puts <<-EOF
@@ -73,6 +74,10 @@ def parse_command_line()
       @base_image_tag = "latest"
     end
 
+    if @output_tag.nil? then
+      @output_tag = "latest"
+    end
+
     if @container_hostname.nil? then
       @container_hostname = "localhost.localdomain"
     end
@@ -94,26 +99,77 @@ def init_docker_api
   rescue Excon::Errors::SocketError => e
     raise "Docker instance not connectable.\nError was: #{e}\nIf you are on OSX, you might not have Boot2Docker setup correctly\nCheck your DOCKER_HOST variable has been set"
   end
+
+  @logger = Logger.new(STDOUT)
+  @logger.level = Logger::INFO
+  ::Docker.logger = @logger
 end
 
 def dockerfile
   "FROM #{@base_image}:#{@base_image_tag}
    RUN apt-get update && apt-get install -y sl
-   CMD ping localhost
+   CMD ping localhost # keep container from dying is there a nicer way?...
   "
+end
+
+def run_puppet(container)
+  command = [
+    "/opt/puppetlabs/puppet/bin/puppet",
+    "apply",
+    "-e",
+    "include #{@role_class}",
+  ]
+
+  # needed to prevent timeouts from container.exec()
+  Excon.defaults[:write_timeout] = 1000
+  Excon.defaults[:read_timeout] = 1000
+
+  puppet_out = container.exec(command) { | stream, chunk |
+    puts "#{stream}: #{chunk}"
+  }
+
 end
 
 def build_image
   init_docker_api
   image = ::Docker::Image.build(dockerfile(), { :rm => true })
 
+  hostconfig = {}
+  hostconfig['Binds'] = [
+    '/etc/puppetlabs:/etc/puppetlabs:ro',
+    '/opt/puppetlabs:/opt/puppetlabs:ro',
+  ] 
   container_opts = {
     'Image'     => image.id,
     'Hostname'  => @container_hostname,
+    'Volumes'   => {
+        "/etc/puppetlabs"               => {},
+        "/opt/puppetlabs"               => {},
+        "/opt/puppetlabs/puppet/cache"  => {},
+        "/etc/puppetlabs/puppet/ssl"    => {},
+    },
+    'HostConfig' => hostconfig, 
   }
   container = ::Docker::Container.create(container_opts)
   container.start({"PublishAllPorts" => true, "Privileged" => true})
-  puts "started #{container.id}! WOW"
+
+  # run puppet apply
+  run_puppet(container)
+
+  # commit/save container to be an image
+  image = container.commit
+  image_opts = {
+    'repo'  => @output_image,
+    'tag'   => @output_tag,
+  }
+  image.tag(image_opts)
+
+  # delete container (image will be left intact)
+  if @debug
+    puts "finished build, container #{container.id} left on system"
+  else
+    container.delete(:force => true)
+  end
 end
 
 def main
