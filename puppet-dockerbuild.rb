@@ -107,7 +107,6 @@ end
 
 def dockerfile
   "FROM #{@base_image}:#{@base_image_tag}
-   RUN apt-get update && apt-get install -y sl
    CMD ping localhost # keep container from dying is there a nicer way?...
   "
 end
