@@ -13,7 +13,8 @@ def show_usage()
                           --role-class ROLE_CLASS \\ 
                           --output-image DOCKER_IMAGE \\  
                           --output-tag TAG \\ 
-    
+                          --target-os OS
+
     BASE_IMAGE
       Docker image to download and build inside
 
@@ -31,6 +32,10 @@ def show_usage()
 
     TAG
       Final image tag
+
+    OS
+      Target operating system we are building.  Default is to autodetect from
+      base image name
   EOF
 end
 
@@ -43,6 +48,7 @@ def parse_command_line()
     [ '--container-hostname', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--output-image',       GetoptLong::REQUIRED_ARGUMENT ],
     [ '--output-tag',         GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--target-os',          GetoptLong::REQUIRED_ARGUMENT ],
     [ '--help',               GetoptLong::NO_ARGUMENT ],
     [ '--debug',              GetoptLong::NO_ARGUMENT ],
   )
@@ -63,10 +69,15 @@ def parse_command_line()
       @output_image = arg
     when '--output-tag'
       @output_tag = arg
+    when '--target-os'
+      @target_os = arg
     when '--help'
       show_usage()
     when '--debug'
       @debug = true
+    else
+      puts "unknown option #{opt}"
+      show_usage()
     end
   end
   if @base_image and @role_class and @output_image then
@@ -80,6 +91,17 @@ def parse_command_line()
 
     if @container_hostname.nil? then
       @container_hostname = "localhost.localdomain"
+    end
+
+    if @target_os.nil? then
+      case @base_image
+      when /ubuntu|debian/
+        @target_os = "debian"
+      when /centos|redhat/
+        @target_os = "redhat"
+      else
+        puts "Unable to get operating system for #{@base_image}, try selecting one with --target-os"
+      end
     end
     true
   else
@@ -106,8 +128,19 @@ def init_docker_api
 end
 
 def dockerfile
+  systemd = "/lib/systemd/systemd"
+  case @target_os 
+  when "debian"
+    update = "apt-get update"
+  when "redhat"
+    update = "yum clean all"
+  else
+    abort("Unknown target os: #{@target_os}")
+  end
+
   "FROM #{@base_image}:#{@base_image_tag}
-   CMD ping localhost # keep container from dying is there a nicer way?...
+   RUN #{update}
+   CMD #{systemd}
   "
 end
 
@@ -160,6 +193,7 @@ def build_image
   image_opts = {
     'repo'  => @output_image,
     'tag'   => @output_tag,
+    'force' => true,
   }
   image.tag(image_opts)
 
