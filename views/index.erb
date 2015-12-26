@@ -1,0 +1,19 @@
+<html>
+  <head>
+    <title>Puppet Dockerbuild - Index</title>
+  </head>
+  <body>
+    <h1>Puppet Dockerbuild - Index</h1>
+    <p>
+      <% if container then %>
+        <a href="/container_log">Container log</a> <br/>
+      <% end %>
+    </p>
+    <p>
+      Dockerbuild container status: <%= @container_status %>
+    </p>
+    <p>
+      <a href="/new_image">New Image</a> <br/>
+    </p>
+  </body>
+</html>
