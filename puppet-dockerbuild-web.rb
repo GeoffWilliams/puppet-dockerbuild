@@ -1,6 +1,7 @@
 require 'sinatra/base'
 require 'docker'
 require 'logger'
+require 'open3'
 
 $dockerbuild_home = File.expand_path(File.dirname(__FILE__))
 
@@ -120,6 +121,26 @@ class App < Sinatra::Base
     return value
   end
 
+  get '/refresh_puppet_code' do
+    @r10k_config = "#{$dockerbuild_home}/r10k.yaml"
+    @r10k_command = "r10k -c #{@r10k_config} deploy environment -pv"
+    @command_output = ""
+    exit_status = 1
+    stdin, stdout, stderr, wait_thr = Open3.popen3(@r10k_command)
+    exit_status = wait_thr.value
+    @command_output += stdout.read
+    @command_output += stderr.read
+    if exit_status != 0
+      @command_output =  "Failed to execute #{@r10k_command}. Error was #{stderr.read}"
+    end
+    stdin.close
+    stdout.close
+    stderr.close
+
+    puts @command_output
+    erb :command_complete
+  end
+
   post '/new_image' do
     base_name           = params[:base_image]
     base_image_tag      = params[:base_image_tag]
@@ -135,7 +156,7 @@ class App < Sinatra::Base
     # FIXME validation and sanitation...
 
     @command_output = @@dockerbuild::container.exec([
-      "/usr/local/bin/puppet-dockerbuild.rb",
+      "/dockerbuild/puppet-dockerbuild.rb",
       "--base-name", base_name,
       "--base-image-tag", base_image_tag,
       "--environment", environment,

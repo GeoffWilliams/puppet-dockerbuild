@@ -1,0 +1,5 @@
+  :cachedir: './build/cache'
+  :sources:
+    :plops:
+      remote: 'https://github.com/GeoffWilliams/r10k-control/'
+      basedir: './build/code'

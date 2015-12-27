@@ -57,3 +57,16 @@ In this case I'm just including the main apache class, not a role but you get th
   ```shell
   sudo apt-get install ruby-dev
   ```
+* I get a weird ruby error, this was working before!:
+  ```
+  /Library/Ruby/Gems/2.0.0/gems/docker-api-1.23.0/lib/docker/base.rb:16:in `initialize': Must have id, got: {"id"=>nil, :headers=>{}} (Docker::Error::ArgumentError)
+    from /Library/Ruby/Gems/2.0.0/gems/docker-api-1.23.0/lib/docker/image.rb:117:in `new'
+    from /Library/Ruby/Gems/2.0.0/gems/docker-api-1.23.0/lib/docker/image.rb:117:in `create'
+    from puppet-dockerbuild-web.rb:37:in `control_container'
+    from puppet-dockerbuild-web.rb:92:in `block in <class:App>'
+    from /Library/Ruby/Gems/2.0.0/gems/sinatra-1.4.6/lib/sinatra/base.rb:1410:in `configure'
+    from puppet-dockerbuild-web.rb:87:in `<class:App>'
+    from puppet-dockerbuild-web.rb:84:in `<main>'
+  ```
+  You might have run out of space in docker or your daemon is not working.  Try 
+  deleting containers/images to free up space and then restart docker
