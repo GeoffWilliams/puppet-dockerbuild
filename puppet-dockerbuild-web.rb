@@ -99,6 +99,14 @@ class App < Sinatra::Base
     Sinatra::Application.quit!
   end
 
+  def get_environments
+    pwd = Dir.pwd
+    Dir.chdir("./build/code/environments")
+    @environments = Dir.glob('*').reject {|e| !File.directory?(e)}
+    Dir.chdir(pwd)
+    puts "Environments loaded: #{@environments}"
+  end
+
   get '/' do
     if @@dockerbuild::container == nil
       @container_status = "stopped"
@@ -109,6 +117,7 @@ class App < Sinatra::Base
   end
 
   get '/new_image' do
+    get_environments
     erb :new_image
   end
 
@@ -138,6 +147,7 @@ class App < Sinatra::Base
     stderr.close
 
     puts @command_output
+
     erb :command_complete
   end
 

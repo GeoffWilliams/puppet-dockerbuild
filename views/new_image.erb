@@ -19,8 +19,13 @@
         </tr>
         <tr>
           <td>Environment</td>
-          <td><input type="text" name="environment" value="production"/></td>
-          <td>Puppet environment to use</td>
+          <td>
+          <select name="environment">
+            <% @environments.each do |environment| %>
+              <option value="<%= environment %>"><%= environment %></option>
+            <% end %>
+          </select>
+          <td>Puppet environment to use.  Normally 'production'</td>
         </tr>
         <tr>
           <td>Role Class</td>
