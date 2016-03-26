@@ -13,6 +13,7 @@ require 'excon'
 require 'logger'
 require 'ansi-to-html'
 
+Thread.abort_on_exception=true
 
 class DockerBuild
     

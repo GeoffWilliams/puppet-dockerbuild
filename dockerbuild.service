@@ -1,0 +1,12 @@
+[Unit]
+Description=dockerbuild
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+Environment="PATH=/opt/puppetlabs/puppet/bin/:$PATH"
+ExecStart=/opt/puppet-dockerbuild/dockerbuild.rb
+
+[Install]
+WantedBy=multi-user.target
