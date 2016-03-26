@@ -33,6 +33,14 @@ $(document).ready(function() {
             $('#environment').val("production");
             updateRoleClasses("production");
         }
+        
+        // read cookie for default prefix value
+        $('#prefix').val(Cookies.get('prefix'));
+        
+        // use a cookie to save the latest value of prefix field
+        $('#prefix').on('input', function (e) {
+            Cookies.set('prefix', this.value);
+        });
 
     });
 

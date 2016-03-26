@@ -91,7 +91,8 @@ class DockerBuild
         container_hostname,
         output_image,
         output_tag,
-        target_os
+        target_os,
+        push_image
     )
         puts("inside build_image() - puts")
         @start_time = Time.now()
@@ -154,6 +155,11 @@ class DockerBuild
             container.delete(:force => true)
         end
    #     logger.info("...leaving build_image()")
+        
+        if push_image
+           # also push the image :D
+            image.push
+        end
         
         @end_time = Time.now()
         @status = "finished"
@@ -290,6 +296,7 @@ class App < Sinatra::Base
         output_tag          = params[:output_tag]
         target_os           = params[:target_os]
         debug               = params[:debug]
+        push_image          = params[:push_image]
 
         errors = []
         if base_image.nil? || base_image.empty? 
@@ -336,6 +343,7 @@ class App < Sinatra::Base
                     output_image,
                     output_tag,
                     target_os,
+                    push_image,
                  )
 
             }

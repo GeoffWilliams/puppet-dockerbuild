@@ -6,6 +6,7 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
         <script src="jquery.validate.min.js"></script>
         <script src="new_image.js"></script>
+        <script src="js.cookie.js"></script>
     </head>
     <body>
         <h1>Dockerbuild - New Image</h1>
@@ -40,6 +41,11 @@
                     <td>Hostname to use during building</td>
                 </tr>
                 <tr>
+                    <td>Prefix</td>
+                    <td><input type="text" id="prefix" name="prefix" /></td>
+                    <td>Registry prefix or Docker Hub username</td>
+                </tr>
+                <tr>
                     <td>Output Image</td>
                     <td><input type="text" id="output_image" name="output_image" required/></td>
                     <td>Name of the image to create</td>
@@ -55,9 +61,9 @@
                     <td>We will attempt to guess what OS the image is by looking at its image name.  If we get it wrong you can override it here.  Valid choices map to the $osfamily puppet fact: 'redhat' or 'debian'</td>
                 </tr>
                 <tr>
-                    <td>Debug</td>
-                    <td><input type="checkbox" id="debug" value="debug"/></td>
-                    <td>Enable debug output during build?</td>
+                    <td>Push</td>
+                    <td><input type="checkbox" id="push_image" value="push_image"/></td>
+                    <td>Push image after build?</td>
                 </tr>
             </table>
             <input type="submit" id="submit" value="submit"/>
