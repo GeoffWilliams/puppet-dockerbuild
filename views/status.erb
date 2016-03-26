@@ -1,0 +1,30 @@
+<link rel="stylesheet" type="text/css" href="style.css"> 
+<h1>Status</h1>
+<% if jobs.length > 0 then %>
+    <table>
+        <tr>
+            <th>Job ID</th>
+            <th>Status</th>
+            <th>Start time</th>
+            <th>Duration (seconds)</th>
+            <th>End time</th>
+            <th>Puppet output</th>
+        </tr>
+    <%  i = jobs.length
+        jobs.reverse.each do |job|
+            i = i-1
+            %>
+        <tr>
+            <td><%= i %></td>
+            <td><%= job.status %></td>
+            <% stat = job.stat %>
+            <td><%= stat[0] %></td>
+            <td><%= stat[1].round(2) %></td>
+            <td><%= stat[2] %></td>
+            <td><pre><%= job.puppet_output_html %></pre></td>
+        </tr>
+    <% end %>
+    </table>
+<% else %>
+    No jobs running
+<% end %>
