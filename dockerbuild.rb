@@ -291,46 +291,61 @@ class App < Sinatra::Base
         target_os           = params[:target_os]
         debug               = params[:debug]
 
+        errors = []
+        if base_image.nil? || base_image.empty? 
+            errors.push("base_image")
+        end
+        if base_image_tag.nil? || base_image_tag.empty?
+            errors.push("base_image_tag")
+        end
+        if environment.nil? || environment.empty?
+            errors.push("environment")
+        end
+        if role_class.nil? || role_class.empty?
+            errors.push("role_class")
+        end
+        if container_hostname.nil? || container_hostname.empty?
+            errors.push("container_hostname")
+        end
+        if output_image.nil? || output_image.empty?
+            errors.push("output_image")
+        end
+        if output_tag.nil? || output_tag.empty?
+            errors.push("output_tag")
+        end
+        if target_os.nil? || target_os.empty?
+            errors.push("target_os")
+        end
 
-        # FIXME validation and sanitation...
-        #@command_output = @@dockerbuild::container.exec([
-        #  "/dockerbuild/puppet-dockerbuild.rb",
-        #  "--base-name", base_name,
-        #  "--base-image-tag", base_image_tag,
-        #  "--environment", environment,
-        #  "--role-class", role_class,
-        #  "--container-hostname", container_hostname,
-        #  "--output-image", output_image,
-        #  "--output-tag", output_tag,
-        #  "--target-os", target_os,
-        #  "--debug" 
-        #])
-        
-        job_id = "error"
+        if errors.empty?
+            job_id = "error"
 
-        thread = Thread.new {
-            d = ::DockerBuild.new()
-            @@semaphore.synchronize {
-                job_id = @@jobs.length
-                @@jobs.push(d)
+            thread = Thread.new {
+                d = ::DockerBuild.new()
+                @@semaphore.synchronize {
+                    job_id = @@jobs.length
+                    @@jobs.push(d)
+                }
+                d.build_image(
+     #                logger,
+                    base_image,
+                    base_image_tag,
+                     environment,
+                    role_class,
+                    container_hostname,
+                    output_image,
+                    output_tag,
+                    target_os,
+                 )
+
             }
-            d.build_image(
- #                logger,
-                base_image,
-                base_image_tag,
-                 environment,
-                role_class,
-                container_hostname,
-                output_image,
-                output_tag,
-                target_os,
-             )
-
-        }
-        # wait for the above thread to add the dockerbuild instance to array of jobs 
-        # if we don't wait here, we will get whatever we initialised job_id to
-        sleep(0.1)
-        "started job #{job_id}"
+            # wait for the above thread to add the dockerbuild instance to array of jobs 
+            # if we don't wait here, we will get whatever we initialised job_id to
+            sleep(0.1)
+            "started job #{job_id}"
+        else
+            "errors encountered on fields " + errors.join("\n")
+        end
         #erb :command_complete
 
     end

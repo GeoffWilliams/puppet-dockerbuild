@@ -4,54 +4,54 @@
         <title>Dockerbuild - New Image</title>
         <link rel="stylesheet" type="text/css" href="style.css"> 
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
-        <script src="http://cdn.jsdelivr.net/jquery.validation/1.15.0/jquery.validate.min.js"></script>
+        <script src="jquery.validate.min.js"></script>
         <script src="new_image.js"></script>
     </head>
     <body>
         <h1>Dockerbuild - New Image</h1>
         <i>Where were going there are no command lines :D</i>
-        <form action="/new_image" method="POST">
+        <form class="cmxform" id="form" action="/new_image" method="POST">
             <table>
                 <tr>
                     <td>Base Image</td>
-                    <td><input type="text" id="base_image" value="centos"/></td>
+                    <td><input type="text" id="base_image" name="base_image" value="centos" required/></td>
                     <td>Docker base image to start building our new image from</td>
                 </tr>
                 <tr>
                     <td>Base Image Tag</td>
-                    <td><input type="text" id="base_image_tag" value="latest"/></td>
+                    <td><input type="text" id="base_image_tag" name="base_image_tag" value="latest" required/></td>
                     <td>Tagged version of Base Image to use</td>
                 </tr>
                 <tr>
                     <td>Environment</td>
                     <td>
-                        <select id="environment" />
+                        <select id="environment" name="environment" required/>
                     </td>
                     <td>Puppet environment to use.  Normally 'production'</td>
                 </tr>
                 <tr>
                     <td>Role Class</td>
-                    <td><select id="role_class" /></td>
+                    <td><select id="role_class" name="role_class" required/></td>
                     <td>Puppet role class to apply inside the image we are building</td>
                 </tr>
                 <tr>
                     <td>Container Hostname</td>
-                    <td><input type="text" id="container_hostname" value="localhost"/></td>
+                    <td><input type="text" id="container_hostname" name="container_hostname" value="localhost" required/></td>
                     <td>Hostname to use during building</td>
                 </tr>
                 <tr>
                     <td>Output Image</td>
-                    <td><input type="text" id="output_image" /></td>
+                    <td><input type="text" id="output_image" name="output_image" required/></td>
                     <td>Name of the image to create</td>
                 </tr>
                 <tr>
                     <td>Output Tag</td>
-                    <td><input type="text" id="output_tag" value="0"/></td>
+                    <td><input type="text" id="output_tag" name="output_tag" value="0" required/></td>
                     <td>Tag to apply to the image that gets created</td>
                 </tr>
                 <tr>
                     <td>Target OS</td>
-                    <td><input type="text" id="target_os" value="redhat" /></td>
+                    <td><input type="text" id="target_os" name="target_os" value="redhat" required /></td>
                     <td>We will attempt to guess what OS the image is by looking at its image name.  If we get it wrong you can override it here.  Valid choices map to the $osfamily puppet fact: 'redhat' or 'debian'</td>
                 </tr>
                 <tr>

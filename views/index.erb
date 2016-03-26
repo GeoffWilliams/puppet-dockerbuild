@@ -5,16 +5,11 @@
   <body>
     <h1>Puppet Dockerbuild - Index</h1>
     <p>
-      <% if container then %>
-        <a href="/container_log">Container log</a> <br/>
-      <% end %>
-    </p>
-    <p>
-      Dockerbuild container status: <%= @container_status %>
+        <a href="/status">Status</a> <br/>
     </p>
     <p>
       <a href="/new_image">New Image</a> <br/>
-      <a href="/refresh_puppet_code">Refresh Puppet Code</a></br>
+      <!-- <a href="/refresh_puppet_code">Refresh Puppet Code</a></br> -->
     </p>
   </body>
 </html>

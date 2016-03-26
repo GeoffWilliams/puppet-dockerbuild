@@ -35,4 +35,8 @@ $(document).ready(function() {
         }
 
     });
+
+    // validate the form using jquery-validate
+    $("#form").validate();
+
 });
