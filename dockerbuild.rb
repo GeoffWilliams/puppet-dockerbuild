@@ -200,13 +200,41 @@ class App < Sinatra::Base
     Sinatra::Application.quit!
   end
 
-  def get_environments
-    pwd = Dir.pwd
-    Dir.chdir("/etc/puppetlabs/code/environments")
-    @environments = Dir.glob('*').reject {|e| !File.directory?(e)}
-    Dir.chdir(pwd)
-    puts "Environments loaded: #{@environments}"
-  end
+    
+    get '/role_classes' do
+        c = {}
+        pwd = Dir.pwd
+        Dir.chdir("/etc/puppetlabs/code/environments")
+
+        # only match classes in role(s) and profile(s) modules
+        Dir.glob("**/{role,roles,profile,profiles}/manifests/**/*.pp")  { |f| 
+
+            # The environment is the first directory
+            environment = f.split("/")[0]
+            if ! c.has_key?(environment)
+                c[environment] = []
+            end
+            
+            # directory immediately before 'manifests' is the module name, everything
+            # after 'manifests' forms the rest of the class name
+            env_mod, file_part = f.match(/([^\/]+)\/manifests\/(.*)$/).captures
+            
+            # fix the module name
+            m_name = env_mod.sub("/","::")
+            
+            # if the was manifests/init.pp then our classname is just the name
+            # of the module.  We already have this so just discard the file_part
+            # entirely
+            c_name = file_part.sub(/init\.pp$/,"")
+
+            if ! c_name.empty?
+                c_name = "::" + c_name.gsub(/\//,"::").sub(/\.pp$/,"")
+            end
+            c[environment].push(m_name + c_name)
+        }
+        Dir.chdir(pwd)
+        JSON.generate(c)        
+    end
 
   get '/' do
     #if @@dockerbuild::container == nil
@@ -218,7 +246,6 @@ class App < Sinatra::Base
   end
 
   get '/new_image' do
-    get_environments
     erb :new_image
   end
 
