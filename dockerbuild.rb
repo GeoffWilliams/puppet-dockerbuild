@@ -230,6 +230,7 @@ class App < Sinatra::Base
         
         begin
             @@settings = JSON.parse(File.read("./settings.json"))
+            settings_updated
         rescue
             @@settings = {
                 "registry_ip"       => "",
@@ -410,7 +411,33 @@ class App < Sinatra::Base
         File.open("./settings.json","w") do |f|
             f.write(@@settings.to_json)
         end
+        settings_updated
         "settings saved" 
+    end
+    
+    def settings_updated
+
+        if @@settings["insecure_registry"]
+            registry_hostname = @@settings["insecure_registry"].split(/:/)[0]
+
+            settings_pp = <<EOF
+class { "docker":
+    extra_parameters => "--insecure-registry #{@@settings['insecure_registry']}",
+}
+EOF
+
+            if @@settings["registry_ip"]
+                settings_pp += <<EOF
+host { "#{registry_hostname}":
+    ensure => present,
+    ip      => "#{@@settings["registry_ip"]}",
+    notify  => Service["docker"],
+}
+EOF
+            end
+
+        system("puppet apply -e '#{settings_pp}'")
+        end
     end
 end
 
