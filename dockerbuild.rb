@@ -288,15 +288,6 @@ class App < Sinatra::Base
         erb :new_image
     end
 
-#  get '/container_log' do
-    #if @@dockerbuild::container
-    #  value = "currently broken" # @@container.logs
-    #else
-    #  value = "container not running"
-    #end
-#    return value
-#  end
-
 #  get '/refresh_puppet_code' do
 #    @r10k_config = "#{$dockerbuild_home}/r10k.yaml"
 #    @r10k_command = "r10k -c #{@r10k_config} deploy environment -pv"
