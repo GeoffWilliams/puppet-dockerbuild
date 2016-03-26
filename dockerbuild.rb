@@ -227,6 +227,15 @@ class App < Sinatra::Base
         @@semaphore = Mutex.new
 
         enable :logging
+        
+        begin
+            @@settings = JSON.parse(File.read("./settings.json"))
+        rescue
+            @@settings = {
+                "registry_ip"       => "",
+                "insecure_registry" => ""
+            }
+        end
     end
 
     # shutdown hook
@@ -388,6 +397,20 @@ class App < Sinatra::Base
     # /status
     get '/status' do
         erb :status, :locals => {'jobs' => @@jobs}
+    end
+
+
+    get '/settings' do
+        erb :settings, :locals => {'settings' => @@settings}
+    end
+    
+    post '/settings' do
+        @@settings["insecure_registry"] = params[:insecure_registry]
+        @@settings["registry_ip"]       = params[:registry_ip]
+        File.open("./settings.json","w") do |f|
+            f.write(@@settings.to_json)
+        end
+        "settings saved" 
     end
 end
 
