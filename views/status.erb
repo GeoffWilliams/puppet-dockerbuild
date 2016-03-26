@@ -5,6 +5,9 @@
         <tr>
             <th>Job ID</th>
             <th>Status</th>
+            <th>Image name</th>
+            <th>Tag</th>
+            <th>Pushed</th>
             <th>Start time</th>
             <th>Duration (seconds)</th>
             <th>End time</th>
@@ -17,6 +20,9 @@
         <tr>
             <td><%= i %></td>
             <td><%= job.status %></td>
+            <td><%= job.final_name %></td>
+            <td><%= job.final_tag %></td>
+            <td><%= job.pushed %></td>
             <% stat = job.stat %>
             <td><%= stat[0] %></td>
             <td><%= stat[1].round(2) %></td>

@@ -17,11 +17,13 @@ require 'ansi-to-html'
 class DockerBuild
     
     def initialize
-        @@debug = false
         @status = "ready"
         @puppet_output = []
         @start_time = nil
-        @end_time = nil        
+        @end_time = nil       
+        @pushed = false
+        @final_name = ""
+        @final_tag = ""
     end
     
     def init_docker_api
@@ -83,8 +85,8 @@ class DockerBuild
     end
 
     def build_image(
-#        logger,
-       base_image,
+        logger,
+        base_image,
         base_image_tag,
         environment,
         role_class,
@@ -92,13 +94,25 @@ class DockerBuild
         output_image,
         output_tag,
         target_os,
-        push_image
+        prefix,
+        push_image,
+        remove_container
     )
         puts("inside build_image() - puts")
         @start_time = Time.now()
         @status = "starting build"
-    #    logger.info("inside build_image()...!")
+        logger.info("inside build_image()...!")
         puts("test message - should be after logger message")
+        
+        if prefix.nil? || prefix.empty?
+            @final_name = output_image
+            prefix_valid = false
+        else
+            @final_name = prefix + "/" + output_image
+            prefix_valid = true
+        end
+        @final_tag = output_tag
+        
         init_docker_api
         @status = "preparing container"
         image = ::Docker::Image.build(
@@ -138,9 +152,10 @@ class DockerBuild
         # commit/save container to be an image
         @status = "committing image"
         image = container.commit
+        
         image_opts = {
-            'repo'  => output_image,
-            'tag'   => output_tag,
+            'repo'  => @final_name,
+            'tag'   => @final_tag,
             'force' => true,
         }
         
@@ -149,16 +164,17 @@ class DockerBuild
 
         # delete container (image will be left intact)
         @status = "cleaning up container"
-        if @@debug
-            puts "finished build, container #{container.id} left on system"
-        else
+        if remove_container
             container.delete(:force => true)
+        else
+            puts "finished build, container #{container.id} left on system"
         end
-   #     logger.info("...leaving build_image()")
-        
-        if push_image
-           # also push the image :D
+
+        if push_image and prefix_valid
+            # also push the image :D
+            @status = "pushing"
             image.push
+            @pushed = true
         end
         
         @end_time = Time.now()
@@ -183,30 +199,41 @@ class DockerBuild
     def stat
        [@start_time, (@end_time||Time.now()) - @start_time, @end_time] 
     end
+    
+    def pushed
+        @pushed
+    end
+    
+    def final_name
+        @final_name
+    end
+    
+    def final_tag
+        @final_tag
+    end
 end
 
 
 class App < Sinatra::Base
 
-  # startup hook
-  configure do
-    set :bind, '0.0.0.0'
-    set :port, 9000
-    set :dump_errors, true
+    # startup hook
+    configure do
+        set :bind, '0.0.0.0'
+        set :port, 9000
+        set :dump_errors, true
 
-    @@jobs = []    
-    @@semaphore = Mutex.new
+        @@jobs = []    
+        @@semaphore = Mutex.new
 
-    enable :logging
-  end
+        enable :logging
+    end
 
-  # shutdown hook
-  at_exit do
-    #@@dockerbuild.control_container()
-    Sinatra::Application.quit!
-  end
+    # shutdown hook
+    at_exit do
+        #@@dockerbuild.control_container()
+        Sinatra::Application.quit!
+    end
 
-    
     get '/role_classes' do
         c = {}
         pwd = Dir.pwd
@@ -242,18 +269,13 @@ class App < Sinatra::Base
         JSON.generate(c)        
     end
 
-  get '/' do
-    #if @@dockerbuild::container == nil
-    #  @container_status = "stopped"
-    #else
-    #  @container_status = @@dockerbuild::container.to_s
-    #end
-    erb :index, :locals => {  }
-  end
+    get '/' do
+        erb :index, :locals => {  }
+    end
 
-  get '/new_image' do
-    erb :new_image
-  end
+    get '/new_image' do
+        erb :new_image
+    end
 
 #  get '/container_log' do
     #if @@dockerbuild::container
@@ -264,26 +286,26 @@ class App < Sinatra::Base
 #    return value
 #  end
 
-  get '/refresh_puppet_code' do
-    @r10k_config = "#{$dockerbuild_home}/r10k.yaml"
-    @r10k_command = "r10k -c #{@r10k_config} deploy environment -pv"
-    @command_output = ""
-    exit_status = 1
-    stdin, stdout, stderr, wait_thr = Open3.popen3(@r10k_command)
-    exit_status = wait_thr.value
-    @command_output += stdout.read
-    @command_output += stderr.read
-    if exit_status != 0
-      @command_output =  "Failed to execute #{@r10k_command}. Error was #{stderr.read}"
-    end
-    stdin.close
-    stdout.close
-    stderr.close
-
-    puts @command_output
-
-    erb :command_complete
-  end
+#  get '/refresh_puppet_code' do
+#    @r10k_config = "#{$dockerbuild_home}/r10k.yaml"
+#    @r10k_command = "r10k -c #{@r10k_config} deploy environment -pv"
+#    @command_output = ""
+#    exit_status = 1
+#    stdin, stdout, stderr, wait_thr = Open3.popen3(@r10k_command)
+#    exit_status = wait_thr.value
+#    @command_output += stdout.read
+#    @command_output += stderr.read
+#    if exit_status != 0
+#      @command_output =  "Failed to execute #{@r10k_command}. Error was #{stderr.read}"
+#    end
+#    stdin.close
+#    stdout.close
+#    stderr.close
+#
+#    puts @command_output
+#
+#    erb :command_complete
+#  end
 
     post '/new_image' do
         logger.info "creating new docker image"
@@ -296,7 +318,9 @@ class App < Sinatra::Base
         output_tag          = params[:output_tag]
         target_os           = params[:target_os]
         debug               = params[:debug]
+        prefix              = params[:prefix]
         push_image          = params[:push_image]
+        remove_container    = params[:remove_container]
 
         errors = []
         if base_image.nil? || base_image.empty? 
@@ -334,16 +358,18 @@ class App < Sinatra::Base
                     @@jobs.push(d)
                 }
                 d.build_image(
-     #                logger,
+                    logger,
                     base_image,
                     base_image_tag,
-                     environment,
+                    environment,
                     role_class,
                     container_hostname,
                     output_image,
                     output_tag,
                     target_os,
+                    prefix,
                     push_image,
+                    remove_container
                  )
 
             }

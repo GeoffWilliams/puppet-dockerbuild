@@ -62,8 +62,13 @@
                 </tr>
                 <tr>
                     <td>Push</td>
-                    <td><input type="checkbox" id="push_image" value="push_image"/></td>
+                    <td><input type="checkbox" id="push_image" name="push_image" value="push_image" checked="checked"/></td>
                     <td>Push image after build?</td>
+                </tr>
+                <tr>
+                    <td>Remove container</td>
+                    <td><input type="checkbox" id="remove_container" name="remove_container" checked="checked"/></td>
+                    <td>Remove the container after building the image?</td>
                 </tr>
             </table>
             <input type="submit" id="submit" value="submit"/>
