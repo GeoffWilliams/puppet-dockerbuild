@@ -179,82 +179,6 @@ class DockerBuild
     end
 end
 
-#class DockerBuild
-#
-#
-#
-#  def init_docker_api
-    # increase the http timeouts as provisioning images can be slow
-    #default_docker_options = { :write_timeout => 300, :read_timeout => 300 }.merge(::Docker.options || {})
-    # Merge docker options from the entry in hosts file
-    #::Docker.options = default_docker_options.merge(@options[:docker_options] || {})
-    # assert that the docker-api gem can talk to your docker
-    # enpoint.  Will raise if there is a version mismatch
-#    begin
-#      ::Docker.validate_version!
-#    rescue Excon::Errors::SocketError => e
-#      raise "Docker instance not connectable.\nError was: #{e}\nIf you are on OSX, you might not have Boot2Docker setup correctly\nCheck your DOCKER_HOST variable has been set"
-#    end
-
-#    @logger = Logger.new(STDOUT)
-#    @logger.level = Logger::INFO
-#    ::Docker.logger = @logger
-#  end
-
-#  def control_container()
-#    puts "inside control_container()"
-#    init_docker_api
-#    if @@container == nil then
-#      #start
-#      @image = "geoffwilliams/pe_master_public_lowmem_r10k_dockerbuild:2015.3.3-0"
-#      # docker pull
-#      puts "docker pull #{@image} dockerbuild_home #{$dockerbuild_home}"
-#      image = Docker::Image.create('fromImage' => @image)
-#      @@container = Docker::Container.create(
-#        'Image'     => @image,
-#        'Cmd'       => "/usr/sbin/init",
-#        'Mounts'    => [
-#          {
-#            'source' => "#{$dockerbuild_home}/build/code",
-#            'destination' => '/etc/puppetlabs/code',
-#            'driver' => 'local',
-#            'mode' => '',
-#            'RW' => false,
-#          },
-#          {
-#            'source' => "#{$dockerbuild_home}",
-#            'destination' => '/dockerbuild', 
-#            'driver' => 'local',
-#            'mode' => '',
-#            'RW' => false,
-#          },
-#        ],
-#        'Volumes' => {
-#          '/etc/puppetlabs/code' => {},
-#          '/dockerbuild' => {},
-#        },
-#        'HostConfig' => {
-#          'Binds' => [
-#              "#{$dockerbuild_home}/build/code:/etc/puppetlabs/code",
-#              "#{$dockerbuild_home}:/dockerbuild",
-#          ],
-#        },
-#      )
-#      msg = @@container.start({"PublishAllPorts" => true, "Privileged" => true})
-#      puts "started container"
-#    else
-#      # stop
-#      msg = @@container.stop()
-#      puts "stopped container"
-#    end
-#    @command_output = msg
-#  end
-#  
-#  def container
-#    @@container
-#  end
-#
-#end
 
 class App < Sinatra::Base
 
@@ -264,12 +188,7 @@ class App < Sinatra::Base
     set :port, 9000
     set :dump_errors, true
 
-
-      
-    #@@dockerbuild = DockerBuild.new()
-    #@@dockerbuild.control_container()
-    @@jobs = []
-      
+    @@jobs = []    
     @@semaphore = Mutex.new
 
     enable :logging
