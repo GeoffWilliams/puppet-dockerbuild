@@ -119,6 +119,26 @@ class DockerBuild
         return status, message
     end
 
+    def remove_old_image(prefix, image, tag)
+        # if image + tag already exists, we must remove it to avoid leaving
+        # a stray tag
+        
+        target = "#{prefix}/#{image}:#{tag}"
+        images = ::Docker::Image.all
+
+        found = false
+        i = 0
+        while i < images.length and ! found
+            image = images[i]
+            repo_tags = image.info["RepoTags"]
+            if repo_tags.include?(target)
+               found = true
+               image.remove
+            end
+            i += 1
+        end
+    end
+        
     def build_image(
         logger,
         base_image,
@@ -198,6 +218,7 @@ class DockerBuild
         }
         
         @status = "tagging image"
+        remove_old_image(prefix, output_image, output_tag)
         image.tag(image_opts)
 
         # delete container (image will be left intact)
