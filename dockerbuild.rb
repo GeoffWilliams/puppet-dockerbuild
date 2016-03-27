@@ -18,8 +18,8 @@ Thread.abort_on_exception=true
 class DockerBuild
     
     def initialize
-        @status = "ready"
-        @puppet_output = []
+        @status = "queued"
+        @output = []
         @start_time = nil
         @end_time = nil       
         @pushed = false
@@ -79,7 +79,7 @@ class DockerBuild
         Excon.defaults[:write_timeout] = 1000
         Excon.defaults[:read_timeout] = 1000
 
-        @puppet_output = container.exec(command) { | stream, chunk |
+        @output = container.exec(command) { | stream, chunk |
             puts "#{stream}: #{chunk}"
         }
 
@@ -99,11 +99,8 @@ class DockerBuild
         push_image,
         remove_container
     )
-        puts("inside build_image() - puts")
+
         @start_time = Time.now()
-        @status = "starting build"
-        logger.info("inside build_image()...!")
-        puts("test message - should be after logger message")
         
         if prefix.nil? || prefix.empty?
             @final_name = output_image
@@ -113,6 +110,12 @@ class DockerBuild
             prefix_valid = true
         end
         @final_tag = output_tag
+
+        while App.refreshing?
+           sleep(0.1) 
+        end
+        
+        App.register_build        
         
         init_docker_api
         @status = "preparing container"
@@ -181,19 +184,19 @@ class DockerBuild
         @end_time = Time.now()
         @status = "finished"
         puts("leaving build_image() -puts")
-        
+        App.complete_build
     end
     
     def status
         @status
     end
     
-    def puppet_output
-        @puppet_output
+    def output
+        @output
     end
     
-    def puppet_output_html
-        a2h = Ansi::To::Html.new(@puppet_output.join("\n"))
+    def output_html
+        a2h = Ansi::To::Html.new(@output.join("\n"))
         a2h.to_html()
     end
     
@@ -211,6 +214,10 @@ class DockerBuild
     
     def final_tag
         @final_tag
+    end
+    
+    def type
+        "image"
     end
 end
 
@@ -270,6 +277,67 @@ EOF
     
 end
 
+class RefreshPuppetCode
+    def initialize
+        @status = "queued"
+        @output = []
+        @start_time = nil
+        @end_time = nil       
+        @pushed = false
+        @final_name = ""
+        @final_tag = ""
+    end
+    
+    def refresh
+        @start_time = Time.now
+        App.refreshing(true)
+        
+        # wait for any active build threads to finish
+        while App.building > 0
+           sleep(1) 
+        end
+        @status = "running"
+        r10k_command = "r10k deploy environment -pv"
+
+        exit_status = 1
+        stdin, stdout, stderr, wait_thr = Open3.popen3(r10k_command)
+        exit_status = wait_thr.value
+        @output.push(stdout.read)
+        if exit_status != 0
+            @output.push("Failed to execute #{r10k_command}. Error was #{stderr.read}")
+        end
+        stdin.close
+        stdout.close
+        stderr.close
+        
+        @end_time = Time.now
+        @status = "finished"
+        
+        App.refreshing(false)
+    end
+    
+    def status
+        @status
+    end
+    
+    def output
+        @output
+    end
+    
+    def output_html
+        a2h = Ansi::To::Html.new(@output.join("\n"))
+        a2h.to_html()
+    end
+    
+    def stat
+       [@start_time, (@end_time||Time.now()) - @start_time, @end_time] 
+    end
+    
+    def type
+        "refresh"
+    end
+end
+
 class App < Sinatra::Base
     
     # startup hook
@@ -287,8 +355,43 @@ class App < Sinatra::Base
         # class if method calls are needed
         @@system_settings = SystemSettings.new()
 
+        # how many images are currently building (live threads)
+        @@building = 0
+        
+        # was a refresh requested?  True until it is complete
+        @@refreshing = false
     end
 
+    def self.register_build
+        @@semaphore.synchronize {
+            @@building += 1
+        }
+    end
+    
+    def self.complete_build
+        @@semaphore.synchronize {
+            @@building -= 1
+        }
+    end
+    
+    def self.building
+        @@semaphore.synchronize {
+            @@building
+        }
+    end
+    
+    def self.refreshing(status) 
+        @@semaphore.synchronize {
+            @@refreshing = status
+        }        
+    end
+    
+    def self.refreshing?
+        @@semaphore.synchronize {
+            @@refreshing
+        }
+    end
+    
     # shutdown hook
     at_exit do
         #@@dockerbuild.control_container()
@@ -338,26 +441,22 @@ class App < Sinatra::Base
         erb :new_image
     end
 
-#  get '/refresh_puppet_code' do
-#    @r10k_config = "#{$dockerbuild_home}/r10k.yaml"
-#    @r10k_command = "r10k -c #{@r10k_config} deploy environment -pv"
-#    @command_output = ""
-#    exit_status = 1
-#    stdin, stdout, stderr, wait_thr = Open3.popen3(@r10k_command)
-#    exit_status = wait_thr.value
-#    @command_output += stdout.read
-#    @command_output += stderr.read
-#    if exit_status != 0
-#      @command_output =  "Failed to execute #{@r10k_command}. Error was #{stderr.read}"
-#    end
-#    stdin.close
-#    stdout.close
-#    stderr.close
-#
-#    puts @command_output
-#
-#    erb :command_complete
-#  end
+    get '/refresh_puppet_code' do
+        job_id="error"
+        thread = Thread.new {
+            r = ::RefreshPuppetCode.new()
+            @@semaphore.synchronize {
+                job_id = @@jobs.length
+                @@jobs.push(r)
+            }
+            r.refresh
+        }
+        # wait for the above thread to add the dockerbuild instance to array of jobs 
+        # if we don't wait here, we will get whatever we initialised job_id to
+        sleep(0.1)
+        "started job #{job_id}"
+    end
+    
 
     post '/new_image' do
         logger.info "creating new docker image"
@@ -438,7 +537,11 @@ class App < Sinatra::Base
     
     # /status
     get '/status' do
-        erb :status, :locals => {'jobs' => @@jobs}
+        erb :status, :locals => {
+            'jobs'          => @@jobs, 
+            'building'      => @@building, 
+            'refreshing'    => @@refreshing
+        }
     end
 
 
