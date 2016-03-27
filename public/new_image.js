@@ -2,7 +2,7 @@ var role_classes;
 
 function updateRoleClasses(environment) {
     $('#role_class').empty().append(new Option());
-    for (c in role_classes[environment]) {
+    for (c in role_classes[environment].sort()) {
         $('#role_class').append(
             new Option(
                 role_classes[environment][c],

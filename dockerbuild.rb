@@ -90,22 +90,33 @@ class DockerBuild
     # doesn't work with docker hub yet, just the registry
     # image
     def verify_remote_image_tag(registry, image, tag)
-        uri = URI("http://#{registry}/v2/#{image}/list")
+        uri = URI("http://#{registry}/v2/#{image}/tags/list")
         begin
-            response = Net::HTTP.get(uri)
-            json = JSON.parse(response)
-            if json.has_key?("tags")
-                if json["tags"].has_key?(tag)
-                    true
+            res = Net::HTTP.get_response(uri)
+            if res.code == "200"
+                json = JSON.parse(res.body)
+                if json.has_key?("tags")
+                    if json["tags"].include?(tag)
+                        status = true
+                        message = "remote image and tag exist"
+                    else
+                        status = false
+                        message = "remote image exists but new tag missing"
+                    end
                 else
-                    false
+                    status = false
+                    message = "remote image does not list any tags"
                 end
             else
-                false
+                status = false
+                message = "remote image does not exist"
             end
         rescue SocketError
-            false
+            status = false
+            message = "error connecting to #{registry}"
         end
+        
+        return status, message
     end
 
     def build_image(
@@ -204,10 +215,14 @@ class DockerBuild
             # image.push seems to fail silently on error, so verify the ID
             # exists in the remote repository after push
             image.push
-            if verify_remote_image_tag(prefix, output_image, output_tag)
+            push_status, push_message = verify_remote_image_tag(
+                prefix, output_image, output_tag
+            )
+            
+            if push_status
                 @pushed = true
             else
-                @pushed = "error pushing"
+                @pushed = "error pushing (#{push_message})"
             end
         end
         
