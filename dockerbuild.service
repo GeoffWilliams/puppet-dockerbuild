@@ -5,7 +5,9 @@ Requires=docker.service
 
 [Service]
 TimeoutStartSec=0
-Environment="PATH=/opt/puppetlabs/puppet/bin/:$PATH"
+Environment="PATH=/opt/puppetlabs/puppet/bin/:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+Environment="HOME=/root"
+Environment="LANG=en_US.UTF-8"
 ExecStart=/opt/puppet-dockerbuild/dockerbuild.rb
 
 [Install]

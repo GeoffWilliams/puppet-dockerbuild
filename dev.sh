@@ -8,4 +8,4 @@ docker run -d --privileged \
   --hostname pe-puppet.localdomain\
   --restart always \
   -p 9000 \
-geoffwilliams/pe_master_public_lowmem_r10k_dockerbuild:2015.3.3-3
+geoffwilliams/pe_master_public_lowmem_r10k_dockerbuild:2015.3.3-6
