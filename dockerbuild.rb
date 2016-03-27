@@ -12,8 +12,9 @@ require 'docker'
 require 'excon'
 require 'logger'
 require 'ansi-to-html'
+require 'net/http'
+require 'json'
 
-Thread.abort_on_exception=true
 
 class DockerBuild
     
@@ -83,6 +84,28 @@ class DockerBuild
             @output.push("#{stream}: #{chunk}")
         }
         
+    end
+    
+    # verify image + tag exist in remote repository
+    # doesn't work with docker hub yet, just the registry
+    # image
+    def verify_remote_image_tag(registry, image, tag)
+        uri = URI("http://#{registry}/v2/#{image}/list")
+        begin
+            response = Net::HTTP.get(uri)
+            json = JSON.parse(response)
+            if json.has_key?("tags")
+                if json["tags"].has_key?(tag)
+                    true
+                else
+                    false
+                end
+            else
+                false
+            end
+        rescue SocketError
+            false
+        end
     end
 
     def build_image(
@@ -177,8 +200,15 @@ class DockerBuild
         if push_image and prefix_valid
             # also push the image :D
             @status = "pushing"
+            
+            # image.push seems to fail silently on error, so verify the ID
+            # exists in the remote repository after push
             image.push
-            @pushed = true
+            if verify_remote_image_tag(prefix, output_image, output_tag)
+                @pushed = true
+            else
+                @pushed = "error pushing"
+            end
         end
         
         @end_time = Time.now()
@@ -196,7 +226,7 @@ class DockerBuild
     end
     
     def output_html
-        a2h = Ansi::To::Html.new(@output.join("\n"))
+        a2h = Ansi::To::Html.new(@output.join(""))
         a2h.to_html()
     end
     
@@ -331,7 +361,7 @@ class RefreshPuppetCode
     end
     
     def output_html
-        a2h = Ansi::To::Html.new(@output.join("\n"))
+        a2h = Ansi::To::Html.new(@output.join(""))
         a2h.to_html()
     end
     
@@ -458,6 +488,7 @@ class App < Sinatra::Base
             }
             r.refresh
         }
+        thread.abort_on_exception = true
         # wait for the above thread to add the dockerbuild instance to array of jobs 
         # if we don't wait here, we will get whatever we initialised job_id to
         sleep(0.1)
@@ -531,6 +562,7 @@ class App < Sinatra::Base
                  )
 
             }
+            thread.abort_on_exception = true
             # wait for the above thread to add the dockerbuild instance to array of jobs 
             # if we don't wait here, we will get whatever we initialised job_id to
             sleep(0.1)
