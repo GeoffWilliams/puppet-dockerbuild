@@ -1,41 +1,49 @@
-<link rel="stylesheet" type="text/css" href="style.css"> 
-<h1>Status</h1>
-<h2>Live build threads: <%= building %></h2>
-<h2>Refreshing: <%= refreshing %></h2>
-<br />
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="style.css"> 
+        <meta http-equiv="refresh" content="5">
+        <title>dockerbuild - status</title>
+    </head>
+    <body>
+        <h1>Status</h1>
+        <h2>Live build threads: <%= building %></h2>
+        <h2>Refreshing: <%= refreshing %></h2>
+        <br />
 <% if jobs.length > 0 then %>
-    <table>
-        <tr>
-            <th>Job ID</th>
-            <th>Type</th>
-            <th>Status</th>
-            <th>Image name</th>
-            <th>Tag</th>
-            <th>Pushed</th>
-            <th>Start time</th>
-            <th>Duration (seconds)</th>
-            <th>End time</th>
-            <th>Output</th>
-        </tr>
-    <%  i = jobs.length
+        <table>
+            <tr>
+                <th>Job ID</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Image name</th>
+                <th>Tag</th>
+                <th>Pushed</th>
+                <th>Start time</th>
+                <th>Duration (seconds)</th>
+                <th>End time</th>
+                <th>Output</th>
+            </tr>
+<%  i = jobs.length
         jobs.reverse.each do |job|
             i = i-1
-            %>
-        <tr>
-            <td><%= i %></td>
-            <td><%= job.type %></td>
-            <td><%= job.status %></td>
-            <td><%= job.type == "image" ? job.final_name : "&mdash;" %></td>
-            <td><%= job.type == "image" ? job.final_tag : "&mdash;" %></td>
-            <td><%= job.type == "image" ? job.pushed : "&mdash;" %></td>
-            <% stat = job.stat %>
-            <td><%= stat[0] %></td>
-            <td><%= stat[1].round(2) %></td>
-            <td><%= stat[2] %></td>
-            <td><pre><%= job.output_html %></pre></td>
-        </tr>
-    <% end %>
-    </table>
+%>
+            <tr>
+                <td><%= i %></td>
+                <td><%= job.type %></td>
+                <td><%= job.status %></td>
+                <td><%= job.type == "image" ? job.final_name : "&mdash;" %></td>
+                <td><%= job.type == "image" ? job.final_tag : "&mdash;" %></td>
+                <td><%= job.type == "image" ? job.pushed : "&mdash;" %></td>
+                <% stat = job.stat %>
+                <td><%= stat[0] %></td>
+                <td><%= stat[1].round(2) %></td>
+                <td><%= stat[2] %></td>
+                <td><pre><%= job.output_html %></pre></td>
+            </tr>
+<%  end %>
+        </table>
 <% else %>
-    No jobs running
+    <p>No jobs running</p>
 <% end %>
+</html>

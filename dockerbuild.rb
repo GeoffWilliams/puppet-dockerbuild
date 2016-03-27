@@ -297,18 +297,24 @@ class RefreshPuppetCode
            sleep(1) 
         end
         @status = "running"
-        r10k_command = "r10k deploy environment -pv"
+        r10k_command = "cd /tmp && r10k deploy environment -pv 2>&1"
 
         exit_status = 1
-        stdin, stdout, stderr, wait_thr = Open3.popen3(r10k_command)
-        exit_status = wait_thr.value
-        @output.push(stdout.read)
-        if exit_status != 0
-            @output.push("Failed to execute #{r10k_command}. Error was #{stderr.read}")
+        
+        # r10k will fail if executed from dockerbuild directory for some
+        # reason - seems to happen if checked out git code is in a subdir
+        #pwd = Dir.pwd
+        #Dir.chdir("/root")
+        Open3.popen3(r10k_command) do |stdin, stdout, stderr, wait_thr|
+            while line = stdout.gets
+                @output.push(line)
+            end
+            exit_status = wait_thr.value
+            if exit_status != 0
+                @output.push("Failed to execute #{r10k_command}")
+            end
         end
-        stdin.close
-        stdout.close
-        stderr.close
+        #Dir.chdir(pwd)
         
         @end_time = Time.now
         @status = "finished"
@@ -404,7 +410,8 @@ class App < Sinatra::Base
         Dir.chdir("/etc/puppetlabs/code/environments")
 
         # only match classes in role(s) and profile(s) modules
-        Dir.glob("**/{role,roles,profile,profiles}/manifests/**/*.pp")  { |f| 
+        # plus ready roles and ready profiles
+        Dir.glob("**/{role,roles,r_role,profile,profiles,r_profile}/manifests/**/*.pp")  { |f| 
 
             # The environment is the first directory
             environment = f.split("/")[0]
