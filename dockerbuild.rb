@@ -214,9 +214,64 @@ class DockerBuild
     end
 end
 
+class SystemSettings
+    def initialize
+         begin
+            @@settings = JSON.parse(File.read("./settings.json"))
+            settings_updated
+        rescue Errno::ENOENT
+            @@settings = {
+                "registry_ip"       => "",
+                "insecure_registry" => ""
+            }
+        end       
+    end
+    
+    def settings_updated
+
+        if @@settings["insecure_registry"]
+            registry_hostname = @@settings["insecure_registry"].split(/:/)[0]
+
+            settings_pp = <<EOF
+class { "docker":
+    extra_parameters => "--insecure-registry #{@@settings['insecure_registry']}",
+}
+EOF
+
+            if @@settings["registry_ip"]
+                settings_pp += <<EOF
+host { "#{registry_hostname}":
+    ensure => present,
+    ip      => "#{@@settings["registry_ip"]}",
+    notify  => Service["docker"],
+}
+EOF
+            end
+
+        system("puppet apply -e '#{settings_pp}'")
+        end
+    end
+    
+    def update(settings)
+        @@settings = settings
+        save
+        settings_updated
+    end
+    
+    def save
+        File.open("./settings.json","w") do |f|
+            f.write(@@settings.to_json)
+        end
+    end
+    
+    def settings
+        @@settings
+    end
+    
+end
 
 class App < Sinatra::Base
-
+    
     # startup hook
     configure do
         set :bind, '0.0.0.0'
@@ -227,16 +282,11 @@ class App < Sinatra::Base
         @@semaphore = Mutex.new
 
         enable :logging
-        
-        begin
-            @@settings = JSON.parse(File.read("./settings.json"))
-            settings_updated
-        rescue
-            @@settings = {
-                "registry_ip"       => "",
-                "insecure_registry" => ""
-            }
-        end
+        # you cannot access any methods in *this* class here because
+        # the class is not yet ready.  Must externalise to separate
+        # class if method calls are needed
+        @@system_settings = SystemSettings.new()
+
     end
 
     # shutdown hook
@@ -393,43 +443,18 @@ class App < Sinatra::Base
 
 
     get '/settings' do
-        erb :settings, :locals => {'settings' => @@settings}
+        erb :settings, :locals => {'settings' => @@system_settings.settings}
     end
     
     post '/settings' do
-        @@settings["insecure_registry"] = params[:insecure_registry]
-        @@settings["registry_ip"]       = params[:registry_ip]
-        File.open("./settings.json","w") do |f|
-            f.write(@@settings.to_json)
-        end
-        settings_updated
+        settings = {
+            "insecure_registry" => params[:insecure_registry],
+            "registry_ip"       => params[:registry_ip]
+        }
+        @@system_settings.update(settings)
         "settings saved" 
     end
     
-    def settings_updated
-
-        if @@settings["insecure_registry"]
-            registry_hostname = @@settings["insecure_registry"].split(/:/)[0]
-
-            settings_pp = <<EOF
-class { "docker":
-    extra_parameters => "--insecure-registry #{@@settings['insecure_registry']}",
-}
-EOF
-
-            if @@settings["registry_ip"]
-                settings_pp += <<EOF
-host { "#{registry_hostname}":
-    ensure => present,
-    ip      => "#{@@settings["registry_ip"]}",
-    notify  => Service["docker"],
-}
-EOF
-            end
-
-        system("puppet apply -e '#{settings_pp}'")
-        end
-    end
 end
 
 
