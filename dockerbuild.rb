@@ -79,10 +79,10 @@ class DockerBuild
         Excon.defaults[:write_timeout] = 1000
         Excon.defaults[:read_timeout] = 1000
 
-        @output = container.exec(command) { | stream, chunk |
-            puts "#{stream}: #{chunk}"
+        container.exec(command) { | stream, chunk |
+            @output.push("#{stream}: #{chunk}")
         }
-
+        
     end
 
     def build_image(
