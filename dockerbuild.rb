@@ -288,9 +288,11 @@ class DockerBuild
 end
 
 class SystemSettings
+    SETTINGS_FILE = "/etc/dockerbuild.json"
+    
     def initialize
          begin
-            @@settings = JSON.parse(File.read("./settings.json"))
+            @@settings = JSON.parse(File.read(SETTINGS_FILE))
             settings_updated
         rescue Errno::ENOENT
             @@settings = {
@@ -332,7 +334,7 @@ EOF
     end
     
     def save
-        File.open("./settings.json","w") do |f|
+        File.open(SETTINGS_FILE,"w") do |f|
             f.write(@@settings.to_json)
         end
     end
