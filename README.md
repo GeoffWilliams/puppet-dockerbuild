@@ -14,7 +14,10 @@ This project lets me figure out how to reuse the Puppet code I already have to d
 There's a GUI :) - I wan't my life to be easy...
 
 ### Making a new images
-Making new images is easy!  There's a form to fill in that scans your puppet control repository to build drop downs for your environment and role.  Building an image is as easy as filling out the form and pressing submit (it gets sent to a REST API so you could easily hook up other things and skip the GUI)
+Making new images is easy!  There's a form to fill in that scans your puppet control repository to build drop downs for your environment and role.
+![puppet classes](images/puppet_classes.png)
+
+Building an image is as easy as filling out the form and pressing submit (it gets sent to a REST API so you could easily hook up other things and skip the GUI)
 ![new image](images/new_image.png)
 
 ### Build status
